@@ -1,6 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '../utils/config';
+import { IUser } from '../models/userModel';
+
+interface CustomRequest extends Request {
+  user?: IUser;
+}
 
 export const authenticateJWT = (req: Request, res: Response, next: NextFunction) => {
   const token = req.header('Authorization')?.split(' ')[1];

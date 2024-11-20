@@ -1,7 +1,15 @@
 import { User } from '../models/userModel';
 import logger from '../utils/logger';
+import { z } from 'zod';
+
+// Define validation schemas
+const userIdSchema = z.string().regex(/^[a-fA-F0-9]{24}$/, 'Invalid user ID');
+const roleSchema = z.string().min(1, 'Role must be a non-empty string');
+
 
 export const assignRole = async (userId: string, role: string) => {
+  userIdSchema.parse(userId);
+  roleSchema.parse(role);
   const user = await User.findByIdAndUpdate(userId, { role }, { new: true });
   if (!user) {
     logger.error(`User not found: ${userId}`);
@@ -12,6 +20,8 @@ export const assignRole = async (userId: string, role: string) => {
 };
 
 export const approveUser = async (userId: string) => {
+  userIdSchema.parse(userId);
+
   const user = await User.findByIdAndUpdate(userId, { isApproved: true }, { new: true });
   if (!user) {
     logger.error(`User not found: ${userId}`);
@@ -22,6 +32,8 @@ export const approveUser = async (userId: string) => {
 };
 
 export const banUser = async (userId: string) => {
+  userIdSchema.parse(userId);
+  
   const user = await User.findByIdAndUpdate(userId, { isBanned: true }, { new: true });
   if (!user) {
     logger.error(`User not found: ${userId}`);

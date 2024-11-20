@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { createProduct, getProductById, updateProductPrice } from '../services/productService';
+import  { io } from '../config/socket';
 import logger from '../utils/logger';
 
 export const createNewProduct = async (req: Request, res: Response) => {
@@ -44,6 +45,8 @@ export const updateProduct = async (req: Request, res: Response) => {
     }
     logger.info(`Product price updated: ${product.name} - ${price}`);
     res.status(200).json(product);
+    // Notify users of rate change
+    io.emit('Manager', { productId, price });
   } catch (error) {
     logger.error(`Error updating product price: ${error}`);
     res.status(500).json({ message: 'Failed to update product price' });

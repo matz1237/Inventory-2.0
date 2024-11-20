@@ -27,4 +27,5 @@ app.use('/api/roles', roleRoutes);
 
 setupSocketIO();
 
+export { app };
 export default server;
