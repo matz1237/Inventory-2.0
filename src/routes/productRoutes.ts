@@ -33,7 +33,7 @@ router.put(
   authenticateJWT,
   authorizeRoles('SuperAdmin', 'Admin'),
   param('productId').isMongoId().withMessage('Invalid product ID'),
-  body('price').isNumeric().positive().withMessage('Price must be a positive number'),
+  body('price').isNumeric().custom((value) => value > 0).withMessage('Price must be a positive number'),
   validateRequest,
   updateProduct
 );

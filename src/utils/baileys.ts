@@ -1,27 +1,54 @@
-import { WAConnection } from '@adiwajshing/baileys';
+import { Boom } from '@hapi/boom';
+import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion, useMultiFileAuthState } from '@adiwajshing/baileys';
 import fs from 'fs';
+import P from 'pino';
 import { WHATSAPP_SESSION_FILE } from './config';
+import { generateOTP } from '../services/authService'; // Assuming generateOTP is defined in authService
 
-let conn: WAConnection | null = null;
+const logger = P({ timestamp: () => `,"time":"${new Date().toJSON()}"` }, P.destination('./wa-logs.txt'));
+logger.level = 'trace';
 
 export const connectWhatsApp = async () => {
-  conn = new WAConnection();
+  const { state, saveCreds } = await useMultiFileAuthState(WHATSAPP_SESSION_FILE);
+  const { version, isLatest } = await fetchLatestBaileysVersion();
+  console.log(`Using WhatsApp Web version ${version}, isLatest: ${isLatest}`);
 
-  conn.loadAuthInfo(WHATSAPP_SESSION_FILE);
-
-  conn.on('open', () => {
-    const authInfo = conn.base64EncodedAuthInfo();
-    fs.writeFileSync(WHATSAPP_SESSION_FILE, JSON.stringify(authInfo, null, '\t'));
+  const sock = makeWASocket({
+    logger,
+    printQRInTerminal: true,
+    auth: state,
+    version,
   });
 
-  await conn.connect();
+  sock.ev.on('creds.update', saveCreds);
+
+  sock.ev.on('connection.update', (update) => {
+    const { connection, lastDisconnect } = update;
+    if (connection === 'close') {
+      const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+      console.log('connection closed due to', lastDisconnect?.error, ', reconnecting', shouldReconnect);
+      if (shouldReconnect) {
+        connectWhatsApp();
+      }
+    } else if (connection === 'open') {
+      console.log('opened connection');
+    }
+  });
+
+  sock.ev.on('messages.upsert', async (m) => {
+    const msg = m.messages[0];
+    if (!msg.key.fromMe && m.type === 'notify') {
+      const phoneNumber = msg.key.remoteJid?.split('@')[0];
+      const messageContent = msg.message?.conversation || '';
+
+      if (messageContent.toLowerCase().includes('otp')) {
+        const otp = generateOTP();
+        const responseMessage = `Your OTP is ${otp}. Valid for 5 minutes.`;
+        await sock.sendMessage(msg.key.remoteJid!, { text: responseMessage },{ quoted: msg.key });
+        console.log(`Sent OTP to ${phoneNumber}: ${otp}`);
+      }
+    }
+  });
 };
 
-export const sendTextMessage = async (phoneNumber: string, message: string) => {
-  if (!conn) {
-    throw new Error('WhatsApp connection not established');
-  }
-
-  const chatId = `${phoneNumber}@s.whatsapp.net`;
-  await conn.sendMessage(chatId, message);
-};
+connectWhatsApp().catch((err) => console.error('WhatsApp startup error:', err));

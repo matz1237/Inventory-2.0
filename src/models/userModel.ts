@@ -1,7 +1,8 @@
-import { Schema, model } from 'mongoose';
+import { Schema, model, Document, Types} from 'mongoose';
 import { z } from 'zod';
 
 interface IUser extends Document {
+  _id: Types.ObjectId;
   phoneNumber: string;
   role: string;
   isApproved: boolean;
@@ -10,7 +11,12 @@ interface IUser extends Document {
 
 const userSchema = new Schema({
   phoneNumber: { type: String, required: true, unique: true },
-  role: { type: String, default: 'User' },
+  role: {
+          type: String,
+          enum: ['user', 'supplier', 'shop', 'moderator', 'admin', 'superadmin'], 
+          default: 'User',
+          required: true
+        },
   isApproved: { type: Boolean, default: false },
   isBanned: { type: Boolean, default: false },
 });
