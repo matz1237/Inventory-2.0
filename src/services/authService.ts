@@ -1,11 +1,12 @@
 import { v4 as uuidv4 } from 'uuid';
 import { redisClient } from '../config/redis';
+import crypto from 'crypto';
 import logger from '../utils/logger';
 import { sendMessage } from '../utils/baileys';
 
 // Ensure sendMessage is correctly imported and used
 export const generateOTP = (): string => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return crypto.randomInt(100000, 999999).toString()
 };
 
 export const sendOTPWhatsApp = async (phoneNumber: string, otp: string) => {

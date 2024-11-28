@@ -22,7 +22,7 @@ export const assignRole = async (userId: string, role: string) => {
 export const approveUser = async (userId: string) => {
   userIdSchema.parse(userId);
 
-  const user = await User.findByIdAndUpdate(userId, { isApproved: true }, { new: true });
+  const user = await User.findByIdAndUpdate(userId, { status: 'approved' }, { new: true });
   if (!user) {
     logger.error(`User not found: ${userId}`);
     return null;
@@ -34,7 +34,7 @@ export const approveUser = async (userId: string) => {
 export const banUser = async (userId: string) => {
   userIdSchema.parse(userId);
   
-  const user = await User.findByIdAndUpdate(userId, { isBanned: true }, { new: true });
+  const user = await User.findByIdAndUpdate(userId, { status: 'banned' }, { new: true });
   if (!user) {
     logger.error(`User not found: ${userId}`);
     return null;

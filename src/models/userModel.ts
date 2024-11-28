@@ -1,12 +1,11 @@
-import { Schema, model, Document, Types} from 'mongoose';
+import { Schema, model, Document, Types } from 'mongoose';
 import { z } from 'zod';
 
 interface IUser extends Document {
   _id: Types.ObjectId;
   phoneNumber: string;
   role: string;
-  isApproved: boolean;
-  isBanned: boolean;
+  status: string;
 }
 
 const userSchema = new Schema({
@@ -17,8 +16,11 @@ const userSchema = new Schema({
           default: 'User',
           required: true
         },
-  isApproved: { type: Boolean, default: false },
-  isBanned: { type: Boolean, default: false },
+      status: {
+        type: String,
+        enum: ['pending', 'approved', 'banned'],
+        default: 'pending', 
+      },
 });
 
 const UserSchemaValidation = z.object({
@@ -26,4 +28,4 @@ const UserSchemaValidation = z.object({
 });
 
 export const User = model<IUser>('User', userSchema);
-export { UserSchemaValidation,IUser };
+export { UserSchemaValidation, IUser };

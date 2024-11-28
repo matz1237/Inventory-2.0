@@ -1,5 +1,5 @@
 import { Boom } from '@hapi/boom';
-import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion, useMultiFileAuthState } from '@adiwajshing/baileys';
+import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion, useMultiFileAuthState } from '@whiskeysockets/baileys';
 import fs from 'fs';
 import P from 'pino';
 import { WHATSAPP_SESSION_FILE } from './config';
@@ -7,6 +7,8 @@ import { generateOTP } from '../services/authService'; // Assuming generateOTP i
 
 const logger = P({ timestamp: () => `,"time":"${new Date().toJSON()}"` }, P.destination('./wa-logs.txt'));
 logger.level = 'trace';
+
+let sock: any;
 
 export const connectWhatsApp = async () => {
   const { state, saveCreds } = await useMultiFileAuthState(WHATSAPP_SESSION_FILE);
@@ -44,11 +46,19 @@ export const connectWhatsApp = async () => {
       if (messageContent.toLowerCase().includes('otp')) {
         const otp = generateOTP();
         const responseMessage = `Your OTP is ${otp}. Valid for 5 minutes.`;
-        await sock.sendMessage(msg.key.remoteJid!, { text: responseMessage },{ quoted: msg.key });
+        await sock.sendMessage(msg.key.remoteJid!, { text: responseMessage },{ quoted: msg });
         console.log(`Sent OTP to ${phoneNumber}: ${otp}`);
       }
     }
   });
 };
 
+//export the sendMessage function
+export const sendMessage = async (phoneNumber: string, message: string) => {
+  if(!sock){
+    throw new Error('WhatsApp not connected. Call connectWhatsApp() first');
+  }
+  await sock.sendMessage(`${phoneNumber}@s.whatsapp.net`, { text: message });
+
+}
 connectWhatsApp().catch((err) => console.error('WhatsApp startup error:', err));

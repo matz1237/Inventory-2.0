@@ -10,7 +10,7 @@ export const uploadFile = (req: Request, res: Response) => {
 
   form.parse(req, (err, fields, files) => {
     if (err) {
-      console.error('Error parsing the files', err);
+      logger.error('Error parsing the files', err);
       return res.status(500).json({ message: 'Error parsing the files' });
     }
 
