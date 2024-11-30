@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import { MONGODB_URI } from '../utils/config';
 import logger from '../utils/logger';
 
+mongoose.set('strictQuery', true); // or false, depending on your preference
+
 export const connectDB = async () => {
   try {
     await mongoose.connect(MONGODB_URI, {});

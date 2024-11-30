@@ -2,13 +2,15 @@ import { Request, Response } from 'express';
 import { createProduct, getProductById, updateProductPrice } from '../services/productService';
 import  { io } from '../config/socket';
 import logger from '../utils/logger';
+import { uploadFile } from './fileUploadController';
 
 export const createNewProduct = async (req: Request, res: Response) => {
-  const productData = req.body;
-
   try {
+    uploadFile(req, res);
+    const { filePath } = res.locals;
+    const productData = { ...req.body, photo: filePath };
     const product = await createProduct(productData);
-    logger.info(`Product created: ${product.name}`);
+    logger.info(`Product created: ${product.name} & cretad by : ${(req as any).user.name}`);
     res.status(201).json(product);
   } catch (error) {
     logger.error(`Error creating product: ${error}`);

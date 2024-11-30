@@ -9,12 +9,15 @@ const logger = P({ timestamp: () => `,"time":"${new Date().toJSON()}"` }, P.dest
 logger.level = 'trace';
 
 let sock: any;
+let isInitialConnection = true;
 
 export const connectWhatsApp = async () => {
   const { state, saveCreds } = await useMultiFileAuthState(WHATSAPP_SESSION_FILE);
   const { version, isLatest } = await fetchLatestBaileysVersion();
-  console.log(`Using WhatsApp Web version ${version}, isLatest: ${isLatest}`);
-
+  if (isInitialConnection) {
+    console.log(`Using WhatsApp Web version ${version}, isLatest: ${isLatest}`);
+    isInitialConnection = false;
+  }
   const sock = makeWASocket({
     logger,
     printQRInTerminal: true,
