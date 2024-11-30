@@ -1,9 +1,14 @@
 import { createClient } from 'redis';
-import { REDIS_URL } from '../utils/config';
+import { REDIS_URL,REDIS_PASSWORD } from '../utils/config';
 import logger from '../utils/logger';
 
-
-export const redisClient = createClient({ url: REDIS_URL });
+export const redisClient = createClient({
+  password: REDIS_PASSWORD,
+  socket: {
+      host: REDIS_URL,
+      port: 12886
+  }
+});
 
 export const connectRedis = async () => {
   try {
