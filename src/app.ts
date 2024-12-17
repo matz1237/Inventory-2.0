@@ -9,6 +9,7 @@ import authRoutes from './routes/authRoutes';
 import productRoutes from './routes/productRoutes';
 import roleRoutes from './routes/roleRoutes';
 import fileUploadRoutes from './routes/fileUploadRoutes';
+import { deviceTrackingMiddleware } from './middleware/deviceTrackingMiddleware';
 
 const app = express();
 const server = require('http').createServer(app);
@@ -19,6 +20,8 @@ app.use(helmet());
 app.use(compression());
 app.use(morgan('dev'));
 app.use(express.json());
+
+app.use(deviceTrackingMiddleware);
 
 app.use('/api/auth', otpRateLimiter, registerRateLimiter, authRoutes);
 app.use('/api/products', productRoutes);

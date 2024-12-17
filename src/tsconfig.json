@@ -1,8 +1,8 @@
 {
     "compilerOptions": {
-      "baseUrl": "./",
+      "baseUrl": ".",
       "paths": {
-        "@src/*": ["src/*"]
+        "@src/*": ["./src/*"]
       },
       "target": "ES6",
       "module": "commonjs",
@@ -11,8 +11,10 @@
       "esModuleInterop": true,
       "skipLibCheck": true,
       "forceConsistentCasingInFileNames": true,
-      "sourceMap": true
+      "sourceMap": true,
+      "typeRoots": ["./node_modules/@types", "./src/types"],
+      "types": ["express", "node"]
     },
-    "include": ["src/**/*","types/express.d.ts"],
-    "exclude": ["node_modules"]
-  }
+    "include": ["./**/*"],
+    "exclude": ["node_modules", "dist"]
+}
