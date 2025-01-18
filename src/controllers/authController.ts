@@ -1,59 +1,40 @@
 import { Request, Response } from 'express';
-import { generateOTP, sendOTPWhatsApp } from '../services/authService';
 import { redisClient } from '../config/redis';
-import  logger from '../utils/logger';
-import  { io } from '../config/socket';
+import logger from '../utils/logger';
+import { io } from '../config/socket';
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '../utils/config';
 import { User } from '../models/userModel';
 
 export const registerUser = async (req: Request, res: Response) => {
-  const { phoneNumber } = req.body;
+  let { phoneNumber } = req.body;
   const ip = req.ip;
   const deviceId = req.headers['device-id'];
 
-  // Validate phone number format for India
-  const PhoneNumberPattern = /^[6-9]\d{9}$/;
+  // Log the phone number being registered
+  logger.info(`Registering phone number: ${phoneNumber} from IP: ${ip}`);
+
+  // Validate phone number format
+  const PhoneNumberPattern = /^(?:\+91|91)?[6-9]\d{9}$|^[6-9]\d{9}$/;
   if (!PhoneNumberPattern.test(phoneNumber)) {
     return res.status(400).json({ message: 'Invalid Indian phone number format.' });
   }
-  try {
-    // Check if Redis client is connected
-    if (!redisClient.isOpen) {
-      logger.error('Redis client is not connected');
-      return res.status(500).json({ message: 'Internal server error' });
-    }
-    
-    const existingOTP = await redisClient.get(phoneNumber);
-    if (existingOTP) {
-      return res.status(400).json({ message: 'An OTP has already been sent. Please wait for it to expire.' });
-    }
-    const otp = generateOTP();
-    logger.info(`OTP sent to ${phoneNumber}: ${otp} from IP: ${ip}, Device ID: ${deviceId}`);
-    await sendOTPWhatsApp(phoneNumber, otp);
-    await redisClient.setEx(phoneNumber, 300, otp); // 5 minutes expiration
 
-    io.emit('otpSent', { phoneNumber });
-
-    // Notify user if OTP expires
-    setTimeout(async () => {
-      const expiredOTP = await redisClient.get(phoneNumber);
-      if (expiredOTP) {
-        io.emit('otpExpired', { phoneNumber });
-      }
-    }, 300000);
-
-    res.status(200).json({ message: 'OTP sent to your WhatsApp' });
-  } catch (error) {
-    logger.error(`Error sending OTP to ${phoneNumber}: ${error}`);
-    res.status(500).json({ message: 'Failed to send OTP due to server error' });
+  // Ensure phone number includes country code
+  if (!phoneNumber.startsWith('+91')) {
+    phoneNumber = `+91${phoneNumber}`;
   }
+
+  // Respond to the user indicating that they need to send the access request message
+  res.status(200).json({ message: 'Please send "Hello, give me access" to receive your OTP.' });
+  
 };
 
 export const verifyOTP = async (req: Request, res: Response) => {
   const { phoneNumber, otp } = req.body;
 
   try {
+    // Retrieve the stored OTP from Redis
     const storedOTP = await redisClient.get(phoneNumber);
 
     if (!storedOTP) {
@@ -66,6 +47,7 @@ export const verifyOTP = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Incorrect OTP' });
     }
 
+    // Delete the OTP from Redis after successful verification
     await redisClient.del(phoneNumber);
     logger.info(`OTP verified for ${phoneNumber}`);
     io.emit('otpVerified', { phoneNumber });
@@ -87,8 +69,37 @@ export const verifyOTP = async (req: Request, res: Response) => {
     if (user) {
       io.to(user.role).emit('roleUpdate', { phoneNumber, role: user.role });
     }   
+
+    logger.info(`Stored OTP for ${phoneNumber}: ${storedOTP}`);
+    logger.info(`User provided OTP: ${otp}`);
   } catch (error) {
     logger.error(`Error verifying OTP for ${phoneNumber}: ${error}`);
     res.status(500).json({ message: 'Failed to verify OTP' });
+  }
+};
+
+export const loginUser = async (req: Request, res: Response) => {
+  let { phoneNumber } = req.body;
+  const ip = req.ip;
+
+  logger.info(`Login attempt for phone number: ${phoneNumber} from IP: ${ip}`);
+
+  const PhoneNumberPattern = /^(?:\+91|91)?[6-9]\d{9}$|^[6-9]\d{9}$/;
+  if (!PhoneNumberPattern.test(phoneNumber)) {
+    return res.status(400).json({ message: 'Invalid Indian phone number format.' });
+  }
+
+  if (!phoneNumber.startsWith('+91')) {
+    phoneNumber = `+91${phoneNumber}`;
+  }
+
+  try {
+    // Set a login request in Redis
+    await redisClient.setEx(`login_request:${phoneNumber}`, 300, 'requested'); // 5 minutes expiration
+
+    res.status(200).json({ message: 'Login request initiated. Please send "Hello, give me access" to receive your OTP.' });
+  } catch (error) {
+    logger.error(`Error initiating login for ${phoneNumber}: ${error}`);
+    res.status(500).json({ message: 'Failed to initiate login due to server error' });
   }
 };

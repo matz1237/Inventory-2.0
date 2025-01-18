@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { FingerprintService } from '../services/fingerprintService';
 import { AppError, ErrorType } from '../utils/errorTypes';
 
-export async function deviceTrackingMiddleware(req: Request,res: Response,next: NextFunction): Promise<void> {
+export async function deviceTrackingMiddleware(req: Request,res: Response,next: NextFunction){
   try {
     const fingerprint = await FingerprintService.generateFingerprint(req);
     const ip = String(req.ip ?? '');
@@ -10,6 +10,8 @@ export async function deviceTrackingMiddleware(req: Request,res: Response,next: 
     
     // Explicitly type the request
     (req as Request).deviceInfo = {
+      deviceId: fingerprint,
+      deviceType: 'browser',
       fingerprint,
       ip,
       userAgent

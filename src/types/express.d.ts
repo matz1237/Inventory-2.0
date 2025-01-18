@@ -4,6 +4,8 @@ declare global {
   namespace Express {
     interface Request {
       deviceInfo?: {
+        deviceId: string;
+        deviceType: string;
         fingerprint: string;
         ip: string;
         userAgent: string;
@@ -13,7 +15,7 @@ declare global {
         phoneNumber: string;
         role: string;
         status: string;
-      }
+      };
     }
   }
 }

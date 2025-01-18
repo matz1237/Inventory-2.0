@@ -1,20 +1,18 @@
 import { redisClient } from '../config/redis';
-import crypto from 'crypto';
 import logger from '../utils/logger';
-import { sendMessage } from '../utils/baileys';
+import { sendMessage } from '../utils/baileys';    
 import { AppError, ErrorType } from '../utils/errorTypes';
-import { AnalyticsService } from './analyticsService';
-import { metrics } from '../utils/monitoring';
+
 const OTP_COOLDOWN = 300;
 
 // Ensure sendMessage is correctly imported and used
-export const generateOTP = (): string => {
-  return crypto.randomInt(100000, 999999).toString()
+export const generateOTP = () => {
+  // Example OTP generation logic
+  return Math.floor(100000 + Math.random() * 900000).toString(); // Generates a 6-digit OTP
 };
 
 export const sendOTPWhatsApp = async (phoneNumber: string, otp: string) => {
-  try{
-    metrics.otpRequests.labels('attempt').inc();
+  try {
     // Check rate limit
     const attempts = await redisClient.get(`otp_attempts:${phoneNumber}`);
     if (attempts && parseInt(attempts) >= 3) {
@@ -24,23 +22,24 @@ export const sendOTPWhatsApp = async (phoneNumber: string, otp: string) => {
         429
       );
     }
-  // Send OTP
-  await sendMessage(phoneNumber, `Your OTP is: ${otp}`);
-  await redisClient.incr(`otp_attempts:${phoneNumber}`);
-  await redisClient.expire(`otp_attempts:${phoneNumber}`, 24 * 60 * 60); // 24 hours
-  await AnalyticsService.logActivity({
-    action: 'OTP_SENT',
-    timestamp: new Date(),
-    metadata: { phoneNumber }
-  });
-  metrics.otpRequests.labels('success').inc();
-  logger.info(`OTP sent to ${phoneNumber}: ${otp}`);
-  }catch(error){ 
-    metrics.otpRequests.labels('failure').inc();
+
+    // Send OTP
+    const message = `Your OTP is: ${otp}`;
+    await sendMessage(phoneNumber, message);
+    logger.info(`OTP sent to ${phoneNumber}: ${otp}`);
+
+    // Increment the OTP attempts count
+    await redisClient.incr(`otp_attempts:${phoneNumber}`);
+    await redisClient.expire(`otp_attempts:${phoneNumber}`, OTP_COOLDOWN); // Set expiration for the attempts
+
+    // Store the OTP in Redis with an expiration time of 5 minutes
+    await redisClient.setEx(`otp:${phoneNumber}`, 300, otp); // Corrected method
+  } catch (error) {
+    logger.error(`Failed to send OTP to ${phoneNumber}: ${error}`);
     throw new AppError(
-        ErrorType.OTP_DELIVERY_ERROR,
-        'Failed to send OTP via WhatsApp',
-        503
+      ErrorType.OTP_DELIVERY_ERROR,
+      'Failed to send OTP via WhatsApp',
+      503
     );
   }
 };

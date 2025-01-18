@@ -21,9 +21,10 @@ app.use(compression());
 app.use(morgan('dev'));
 app.use(express.json());
 
-app.use(deviceTrackingMiddleware);
+//app.use(deviceTrackingMiddleware);
 
-app.use('/api/auth', otpRateLimiter, registerRateLimiter, authRoutes);
+app.use('/api/auth',authRoutes);
+//app.use('/api/auth', otpRateLimiter, registerRateLimiter, authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/roles', roleRoutes);
 app.use('/api/files', fileUploadRoutes);
