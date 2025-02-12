@@ -3,7 +3,7 @@ import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion, useMultiFile
 import fs from 'fs';
 import P from 'pino';
 import { WHATSAPP_SESSION_FILE } from './config';
-import { generateOTP } from '../services/authService';
+import { generateOTP, sendOTPWhatsApp } from '../services/authService';
 import { ErrorType, AppError } from './errorTypes';
 import { redisClient } from '../config/redis'; // Assuming you use Redis to track requests
 
@@ -57,23 +57,26 @@ export const connectWhatsApp = async () => {
                     return;
                 }
 
-                // Check if the incoming message is the access request
                 if (incomingMessage.toLowerCase() === 'hello, give me access') {
-                    // Check if a login request has been made
-                    const loginRequest = await redisClient.get(`login_request:${phoneNumber}`);
-                    if (!loginRequest) {
-                        logger.warn(`No login request found for ${phoneNumber}. OTP will not be sent.`);
-                        await sendMessage(phoneNumber, 'Please initiate a login request before requesting an OTP.');
-                        return;
-                    }
+                    try {
+                        const loginRequest = await redisClient.get(`login_request:${phoneNumber}`);
+                        logger.info(`Checking login request for ${phoneNumber}: ${loginRequest}`);
+                        
+                        if (!loginRequest) {
+                            logger.warn(`No login request found for ${phoneNumber}. OTP will not be sent.`);
+                            await sendMessage(phoneNumber, 'Please initiate a login request first at our website.');
+                            return;
+                        }
 
-                    const otp = generateOTP();
-                    await redisClient.setEx(`otp:${phoneNumber}`, 300, otp); // Store OTP for 5 minutes
-                    await sendOTPWhatsApp(phoneNumber, otp);
-                    logger.info(`OTP sent to ${phoneNumber} after receiving access request.`);
+                        const otp = generateOTP();
+                        await sendOTPWhatsApp(phoneNumber, otp);
+                        logger.info(`OTP sent to ${phoneNumber} after receiving access request.`);
+                    } catch (error) {
+                        logger.error(`Failed to process request for ${phoneNumber}:`, error);
+                        await sendMessage(phoneNumber, 'Failed to process your request. Please try again.');
+                    }
                 } else {
                     logger.warn(`Received invalid message from ${phoneNumber}: ${incomingMessage}`);
-                    // Optionally, you can send a response back to the user indicating the expected message
                     await sendMessage(phoneNumber, 'Please send "Hello, give me access" to receive your OTP.');
                 }
             }
@@ -107,21 +110,4 @@ export const sendMessage = async (phoneNumber: string, message: string) => {
     }
 };
 
-export const sendOTPWhatsApp = async (phoneNumber: string, otp: string) => {
-  try {
-    const message = `Your OTP is: ${otp}`;
-    await sendMessage(phoneNumber, message);
-    console.log(`WhatsApp message sent to ${phoneNumber}`);
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      console.error(`Failed to send WhatsApp message to ${phoneNumber}: ${error.message}`, error);
-    } else {
-      console.error(`Failed to send WhatsApp message to ${phoneNumber}:`, error);
-    }
-    throw new AppError(
-      ErrorType.OTP_DELIVERY_ERROR,
-      'Failed to send OTP via WhatsApp',
-      503
-    );
-  }
-};
+

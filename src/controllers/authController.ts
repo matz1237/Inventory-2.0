@@ -12,7 +12,7 @@ export const registerUser = async (req: Request, res: Response) => {
   const deviceId = req.headers['device-id'];
 
   // Log the phone number being registered
-  logger.info(`Registering phone number: ${phoneNumber} from IP: ${ip}`);
+  //logger.info(`Registering phone number: ${phoneNumber} from IP: ${ip}`);
 
   // Validate phone number format
   const PhoneNumberPattern = /^(?:\+91|91)?[6-9]\d{9}$|^[6-9]\d{9}$/;
@@ -25,21 +25,38 @@ export const registerUser = async (req: Request, res: Response) => {
     phoneNumber = `+91${phoneNumber}`;
   }
 
-  // Respond to the user indicating that they need to send the access request message
-  res.status(200).json({ message: 'Please send "Hello, give me access" to receive your OTP.' });
-  
+  try {
+    // Set a login request in Redis
+    await redisClient.setEx(`login_request:${phoneNumber}`, 300, 'requested'); // 5 minutes expiration
+
+    logger.info(`Login request set for ${phoneNumber}`);
+    
+    // Check for existing OTP
+    const existingOTP = await redisClient.get(phoneNumber);
+    if (existingOTP) {
+      logger.warn(`An OTP has already been sent to ${phoneNumber}.`);
+      return res.status(400).json({ message: 'An OTP has already been sent. Please wait for it to expire.' });
+    }
+
+    // Respond to the user indicating that they need to send the access request message
+    res.status(200).json({ message: 'Please send "Hello, give me access" to receive your OTP.' });
+  } catch (error) {
+    logger.error(`Error processing request for ${phoneNumber}: ${error}`);
+    res.status(500).json({ message: 'Failed to process request due to server error' });
+  }
 };
 
 export const verifyOTP = async (req: Request, res: Response) => {
   const { phoneNumber, otp } = req.body;
 
   try {
-    // Retrieve the stored OTP from Redis
-    const storedOTP = await redisClient.get(phoneNumber);
+    // Retrieve the stored OTP from Redis with correct prefix
+    const storedOTP = await redisClient.get(`otp:${phoneNumber}`);
+    const verificationStatus = await redisClient.get(`otp:verified:${phoneNumber}`);
 
     if (!storedOTP) {
       logger.error(`No OTP found for ${phoneNumber}`);
-      return res.status(400).json({ message: 'OTP expired or not found' });
+      return res.status(400).json({ message: 'No OTP found or OTP expired' });
     }
 
     if (storedOTP !== otp) {
@@ -47,8 +64,9 @@ export const verifyOTP = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Incorrect OTP' });
     }
 
-    // Delete the OTP from Redis after successful verification
-    await redisClient.del(phoneNumber);
+    // Delete the OTP and verification status from Redis after successful verification
+    await redisClient.del(`otp:${phoneNumber}`);
+    await redisClient.del(`otp:verified:${phoneNumber}`);
     logger.info(`OTP verified for ${phoneNumber}`);
     io.emit('otpVerified', { phoneNumber });
 
@@ -84,11 +102,13 @@ export const loginUser = async (req: Request, res: Response) => {
 
   logger.info(`Login attempt for phone number: ${phoneNumber} from IP: ${ip}`);
 
+  // Validate phone number
   const PhoneNumberPattern = /^(?:\+91|91)?[6-9]\d{9}$|^[6-9]\d{9}$/;
   if (!PhoneNumberPattern.test(phoneNumber)) {
     return res.status(400).json({ message: 'Invalid Indian phone number format.' });
   }
 
+  // Ensure phone number includes country code
   if (!phoneNumber.startsWith('+91')) {
     phoneNumber = `+91${phoneNumber}`;
   }

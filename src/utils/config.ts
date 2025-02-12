@@ -9,3 +9,4 @@ export const SESSION_SECRET = process.env.SESSION_SECRET || "";
 export const JWT_SECRET = process.env.JWT_SECRET || "";
 export const REDIS_URL = process.env.REDIS_URL  || "";
 export const REDIS_PASSWORD = process.env.REDIS_PASSWORD || "";
+export const REDIS_PORT = process.env.REDIS_PORT ||"";

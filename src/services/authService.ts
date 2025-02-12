@@ -23,17 +23,20 @@ export const sendOTPWhatsApp = async (phoneNumber: string, otp: string) => {
       );
     }
 
-    // Send OTP
+    // Send OTP message
     const message = `Your OTP is: ${otp}`;
     await sendMessage(phoneNumber, message);
-    logger.info(`OTP sent to ${phoneNumber}: ${otp}`);
+    logger.info(`OTP sent to ${phoneNumber}`);
 
     // Increment the OTP attempts count
     await redisClient.incr(`otp_attempts:${phoneNumber}`);
-    await redisClient.expire(`otp_attempts:${phoneNumber}`, OTP_COOLDOWN); // Set expiration for the attempts
+    await redisClient.expire(`otp_attempts:${phoneNumber}`, OTP_COOLDOWN);
 
-    // Store the OTP in Redis with an expiration time of 5 minutes
-    await redisClient.setEx(`otp:${phoneNumber}`, 300, otp); // Corrected method
+    // Store OTP and set verification status
+    await redisClient.setEx(`otp:${phoneNumber}`, 300, otp);
+    await redisClient.setEx(`otp:verified:${phoneNumber}`, 300, 'false');
+
+    return { success: true, message: 'OTP sent successfully' };
   } catch (error) {
     logger.error(`Failed to send OTP to ${phoneNumber}: ${error}`);
     throw new AppError(

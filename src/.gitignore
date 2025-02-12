@@ -1,0 +1,8 @@
+/src/session
+/src/node_modules
+/src/.env
+/uploads
+/Inventory Idea
+/src/package-lock.json
+/src/logs
+/src/yarn.lock
