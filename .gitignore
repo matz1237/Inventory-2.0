@@ -1,8 +1,75 @@
-/src/session
+# Dependencies
 /src/node_modules
+/node_modules
+
+# Build outputs
+/dist
+/build
+/out
+*.js.map
+
+# Environment & Secrets
 /src/.env
+.env
+.env.*
+*.pem
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Logs
+/src/logs
+/logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Session & Runtime data
+/src/session
+/session
+.DS_Store
+.tmp
+.temp
+
+# Package manager files
+/src/package-lock.json
+/src/yarn.lock
+package-lock.json
+yarn.lock
+.yarn-integrity
+.npm
+
+# IDE & Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+.vs/
+*.sublime-workspace
+*.sublime-project
+
+# Testing
+/coverage
+.nyc_output
+junit.xml
+
+# Project specific
 /uploads
 /Inventory Idea
-/src/package-lock.json
-/src/logs
-/src/yarn.lock
+/public/uploads
+/src/public/uploads
+
+# Misc
+.cache
+.local
+thumbs.db
+.DS_Store
+*.pid
+*.seed
+*.pid.lock
+
+# TypeScript specific
+*.tsbuildinfo
+.tscache/
