@@ -1,7 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '../utils/config';
-import { IUser } from '../models/userModel';
+import { IUser, User } from '../models/userModel';
+
+interface JWTPayload {
+  phoneNumber: string;
+}
 
 const roleHierarchy = {
   SuperAdmin: 1,
@@ -12,7 +16,7 @@ const roleHierarchy = {
 
 type Role = keyof typeof roleHierarchy;
 
-export const authenticateJWT = (req: Request, res: Response, next: NextFunction) => {
+export const authenticateJWT = async (req: Request, res: Response, next: NextFunction) => {
   const token = req.header('Authorization')?.split(' ')[1];
 
   if (!token) {
@@ -20,8 +24,14 @@ export const authenticateJWT = (req: Request, res: Response, next: NextFunction)
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as IUser;
-    (req as any).user = decoded;
+    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    const user = await User.findOne({ phoneNumber: decoded.phoneNumber });
+    
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
+
+    (req as any).user = user;
     next();
   } catch (error) {
     res.status(400).json({ message: 'Invalid token' });

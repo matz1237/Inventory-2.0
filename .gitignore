@@ -73,3 +73,7 @@ thumbs.db
 # TypeScript specific
 *.tsbuildinfo
 .tscache/
+
+# Frontend
+/frontend/node_modules
+/frontend
