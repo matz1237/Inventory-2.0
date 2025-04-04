@@ -6,7 +6,7 @@ import { connectDB } from './config/db';
 import { connectRedis } from './config/redis';
 import { connectWhatsApp } from './utils/baileys';
 
-const sessionDir = path.join(__dirname, '..', 'session');
+const sessionDir = path.join(__dirname, '..', '..', 'session', 'whatsapp_session');
 if (!fs.existsSync(sessionDir)) {
     fs.mkdirSync(sessionDir, { recursive: true });
 }

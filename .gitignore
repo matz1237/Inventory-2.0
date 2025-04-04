@@ -77,3 +77,4 @@ thumbs.db
 # Frontend
 /frontend/node_modules
 /frontend
+.qodo

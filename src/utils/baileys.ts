@@ -8,7 +8,7 @@ import { ErrorType, AppError } from './errorTypes';
 import { redisClient } from '../config/redis'; // Assuming you use Redis to track requests
 import { standardizePhoneNumber, getRedisPhoneKey } from '../utils/phoneUtils';
 
-const logger = P({ timestamp: () => `,"time":"${new Date().toJSON()}"` }, P.destination('./logs/whatsapp/wa-logs.txt'));
+const logger = P({ timestamp: () => `,"time":"${new Date().toJSON()}"` }, P.destination('../logs/whatsapp/wa-logs.txt'));
 logger.level = 'trace';
 
 let client: WASocket;
