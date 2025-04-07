@@ -4,7 +4,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { setupSocketIO } from './config/socket';
-import { otpRateLimiter, registerRateLimiter } from './middleware/rateLimitMiddleware';
+import { otpRateLimiter, loginRateLimiter } from './middleware/rateLimitMiddleware';
 import authRoutes from './routes/authRoutes';
 import productRoutes from './routes/productRoutes';
 import roleRoutes from './routes/roleRoutes';
@@ -24,7 +24,6 @@ app.use(express.json());
 //app.use(deviceTrackingMiddleware);
 
 app.use('/api/auth',authRoutes);
-//app.use('/api/auth', otpRateLimiter, registerRateLimiter, authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/roles', roleRoutes);
 app.use('/api/files', fileUploadRoutes);

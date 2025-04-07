@@ -7,7 +7,7 @@ export const otpRateLimiter = rateLimit({
   message: 'Too many OTP requests from this IP, please try again after 24 hours',
 });
 
-export const registerRateLimiter = rateLimit({
+export const loginRateLimiter = rateLimit({
   windowMs: 1* 60 * 1000, // 1 mins
   //windowMs: 24 * 60 * 60 * 1000, // 24 hours
   max: 5, // limit each IP to 5 requests per windowMs
