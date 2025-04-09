@@ -5,8 +5,8 @@ import P from 'pino';
 import { WHATSAPP_SESSION_FILE } from './config';
 import { generateOTP, sendOTPWhatsApp } from '../services/authService';
 import { ErrorType, AppError } from './errorTypes';
-import { redisClient } from '../config/redis'; // Assuming you use Redis to track requests
-import { standardizePhoneNumber, getRedisPhoneKey } from '../utils/phoneUtils';
+import { redisClient } from '../config/redis';
+import { processPhoneNumber, generateRedisKeys } from './phoneUtils';
 
 const logger = P({ timestamp: () => `,"time":"${new Date().toJSON()}"` }, P.destination('../logs/whatsapp/wa-logs.txt'));
 logger.level = 'trace';
@@ -60,30 +60,37 @@ export const connectWhatsApp = async () => {
                     logger.error('Received message with undefined phone number');
                     return;
                 }
-                // Standardize the phone number
-                const standardizedPhone = getRedisPhoneKey(phoneNumber);
 
-                if (incomingMessage.toLowerCase() === 'hello, give me access') {
-                    try {
-                        const loginRequest = await redisClient.get(`login_request:${phoneNumber}`);
-                        logger.info(`Checking login request for ${standardizedPhone}: ${loginRequest}`);
-                        
-                        if (!loginRequest) {
-                            logger.warn(`No login request found for ${standardizedPhone}. OTP will not be sent.`);
-                            await sendMessageWithTyping(standardizedPhone, 'Please initiate a login request first at our website.');
-                            return;
+                try {
+                    const processedPhone = processPhoneNumber(phoneNumber);
+                    const { loginRequest: loginRequestKey } = generateRedisKeys(processedPhone);
+
+                    logger.info(`Received message from ${processedPhone.standardized}: "${incomingMessage}"`);
+
+                    if (incomingMessage.toLowerCase() === 'hello, give me access') {
+                        try {
+                            const loginRequest = await redisClient.get(loginRequestKey);
+                            logger.info(`Checking login request for ${processedPhone.standardized}: ${loginRequest}`);
+                            
+                            if (!loginRequest) {
+                                logger.warn(`No login request found for ${processedPhone.standardized}`);
+                                await sendMessageWithTyping(processedPhone.standardized, 'Please initiate a login request first at our website.');
+                                return;
+                            }
+
+                            const otp = generateOTP();
+                            await sendOTPWhatsApp(processedPhone.standardized, otp);
+                            logger.info(`OTP sent to ${processedPhone.standardized} after receiving access request.`);
+                        } catch (error) {
+                            logger.error(`Failed to process request for ${processedPhone.standardized}:`, error);
+                            await sendMessageWithTyping(processedPhone.standardized, 'Failed to process your request. Please try again.');
                         }
-
-                        const otp = generateOTP();
-                        await sendOTPWhatsApp(standardizedPhone, otp);
-                        logger.info(`OTP sent to ${standardizedPhone} after receiving access request.`);
-                    } catch (error) {
-                        logger.error(`Failed to process request for ${standardizedPhone}:`, error);
-                        await sendMessageWithTyping(standardizedPhone, 'Failed to process your request. Please try again.');
+                    } else {
+                        logger.warn(`Received invalid message from ${processedPhone.standardized}: ${incomingMessage}`);
+                        await sendMessageWithTyping(processedPhone.standardized, 'Please send "Hello, give me access" to receive your OTP.');
                     }
-                } else {
-                    logger.warn(`Received invalid message from ${standardizedPhone}: ${incomingMessage}`);
-                    await sendMessageWithTyping(standardizedPhone, 'Please send "Hello, give me access" to receive your OTP.');
+                } catch (error) {
+                    logger.error(`Error processing message: ${error}`);
                 }
             }
         });
@@ -125,7 +132,10 @@ export const sendMessageWithTyping = async (phoneNumber: string, message: string
         throw new Error('WhatsApp client not initialized');
     }
 
-    const jid = `${phoneNumber}@s.whatsapp.net`;
+    const processedPhone = processPhoneNumber(phoneNumber);
+    console.log(processedPhone,'rahi');
+    const jid = `${processedPhone.standardized}@s.whatsapp.net`;
+    console.log(jid);
     
     try {
         // Show typing indicator
@@ -145,11 +155,10 @@ export const sendMessageWithTyping = async (phoneNumber: string, message: string
             await client.readMessages([sentMsg.key]);
         }
         
-        logger.info(`Message sent to ${phoneNumber}`);
+        logger.info(`Message sent to ${processedPhone.standardized}`);
     } catch (error) {
-        logger.error(`Failed to send message to ${phoneNumber}:`, error);
+        logger.error(`Failed to send message to ${processedPhone.standardized}:`, error);
         throw error;
     }
 };
-
 
