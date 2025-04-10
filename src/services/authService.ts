@@ -6,10 +6,6 @@ import { processPhoneNumber, generateRedisKeys, isInCooldown } from '../utils/ph
 
 const OTP_COOLDOWN = 300;
 
-export const generateOTP = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-};
-
 export const sendOTPWhatsApp = async (phoneNumber: string, otp: string) => {
   try {
     const processedPhone = processPhoneNumber(phoneNumber);
@@ -30,7 +26,7 @@ export const sendOTPWhatsApp = async (phoneNumber: string, otp: string) => {
     // Store OTP first
     logger.info(`Storing OTP in Redis for ${processedPhone.standardized}: ${otp}`);
     await redisClient.setEx(redisKeys.otp, 300, otp);
-    await redisClient.setEx(redisKeys.verified, 300, 'false');
+   // await redisClient.setEx(redisKeys.verified, 300, 'false');
     logger.info(`OTP stored in Redis for ${processedPhone.standardized}`);
 
     // Send OTP message
@@ -75,7 +71,7 @@ export const deleteVerifiedOTP = async (phoneNumber: string) => {
     logger.info(`Deleting OTP data for ${processedPhone.standardized}`);
     
     await redisClient.del(redisKeys.otp);
-    await redisClient.del(redisKeys.verified);
+    //await redisClient.del(redisKeys.verified);
     await redisClient.del(redisKeys.attempts);
     logger.info(`OTP and related keys deleted for ${processedPhone.standardized}`);
   } catch (error) {

@@ -3,7 +3,6 @@ import { verifyOTP, loginUser } from '../controllers/authController';
 import { otpRateLimiter, loginRateLimiter, deviceRateLimiter } from '../middleware/rateLimitMiddleware';
 import { validateRequest } from '../middleware/validationMiddleware';
 import { body } from 'express-validator';
-import logger from '../utils/logger';
 import { logRequest } from '../middleware/loggingMiddleware';
 import { redisClient } from 'config/redis';
 
@@ -24,7 +23,7 @@ router.post(
 
 router.post(
   '/login',
-  logRequest,
+
   loginRateLimiter,
   deviceRateLimiter,
   body('phoneNumber')

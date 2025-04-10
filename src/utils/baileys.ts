@@ -3,10 +3,11 @@ import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion, useMultiFile
 import fs from 'fs';
 import P from 'pino';
 import { WHATSAPP_SESSION_FILE } from './config';
-import { generateOTP, sendOTPWhatsApp } from '../services/authService';
+import { sendOTPWhatsApp } from '../services/authService';
+import { generateOTP } from './otpGenerator';
 import { ErrorType, AppError } from './errorTypes';
 import { redisClient } from '../config/redis';
-import { processPhoneNumber, generateRedisKeys } from './phoneUtils';
+import { processPhoneNumber, generateRedisKeys,getWhatsAppJID  } from './phoneUtils';
 
 const logger = P({ timestamp: () => `,"time":"${new Date().toJSON()}"` }, P.destination('../logs/whatsapp/wa-logs.txt'));
 logger.level = 'trace';
@@ -52,10 +53,9 @@ export const connectWhatsApp = async () => {
             if (!message.key.fromMe && message.message?.conversation) {
                 // Mark message as read
                 await client.readMessages([message.key]);
-
                 const incomingMessage = message.message.conversation;
                 const phoneNumber = message.key.remoteJid?.split('@')[0];
-
+                console.log(phoneNumber,'rahi1');
                 if (!phoneNumber) {
                     logger.error('Received message with undefined phone number');
                     return;
@@ -63,8 +63,9 @@ export const connectWhatsApp = async () => {
 
                 try {
                     const processedPhone = processPhoneNumber(phoneNumber);
+                    console.log(processedPhone,'rahi2');
                     const { loginRequest: loginRequestKey } = generateRedisKeys(processedPhone);
-
+                    console.log(loginRequestKey,'rahi3');
                     logger.info(`Received message from ${processedPhone.standardized}: "${incomingMessage}"`);
 
                     if (incomingMessage.toLowerCase() === 'hello, give me access') {
@@ -111,9 +112,10 @@ export const sendMessage = async (phoneNumber: string, message: string) => {
     if (!client) {
         throw new Error('WhatsApp client not initialized');
     }
-
-    const jid = `${phoneNumber}@s.whatsapp.net`;
-    
+    const processedPhone = processPhoneNumber(phoneNumber);
+    const jid = getWhatsAppJID(phoneNumber);
+    //const jid = `${phoneNumber}@s.whatsapp.net`;
+    console.log(jid);
     try {
         const sentMsg = await client.sendMessage(jid, { text: message });
         // Mark sent message as read
@@ -133,10 +135,8 @@ export const sendMessageWithTyping = async (phoneNumber: string, message: string
     }
 
     const processedPhone = processPhoneNumber(phoneNumber);
-    console.log(processedPhone,'rahi');
-    const jid = `${processedPhone.standardized}@s.whatsapp.net`;
-    console.log(jid);
-    
+    const jid = getWhatsAppJID(phoneNumber);
+        
     try {
         // Show typing indicator
         await client.sendPresenceUpdate('composing', jid);
